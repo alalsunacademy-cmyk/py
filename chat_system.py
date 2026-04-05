@@ -20,6 +20,7 @@ class ChatSystem:
         self.messages_list = None
         self.message_field = None
         self.update_thread_running = False
+        self.update_thread = None
     
     def show_chats(self):
         """عرض قائمة المحادثات"""
@@ -46,9 +47,11 @@ class ChatSystem:
                   self.current_user['id'], self.current_user['id']))
             chats = cursor.fetchall()
         
+        # تنظيف الصفحة
+        self.page.clean()
+        
         if not chats:
             # عرض رسالة عند عدم وجود محادثات
-            self.page.clean()
             self.page.add(
                 ft.Column(
                     [
@@ -71,25 +74,29 @@ class ChatSystem:
                     expand=True,
                 )
             )
+            self.page.update()
             return
         
         # بناء واجهة قائمة المحادثات
         chat_cards = []
         for chat in chats:
+            other_user_id = chat[0]
+            other_user_name = chat[1]
+            
             chat_cards.append(
                 ft.Card(
                     elevation=2,
                     margin=ft.margin.only(bottom=10),
                     content=ft.Container(
                         padding=15,
-                        on_click=lambda e, uid=chat[0], uname=chat[1]: self.show_chat(uid, uname),
+                        on_click=lambda e, uid=other_user_id, uname=other_user_name: self.show_chat(uid, uname),
                         content=ft.Row([
                             ft.CircleAvatar(
-                                content=ft.Text(chat[1][0].upper() if chat[1] else "?"),
+                                content=ft.Text(other_user_name[0].upper() if other_user_name else "?"),
                                 bgcolor=ft.Colors.BLUE_200,
                             ),
                             ft.Column([
-                                ft.Text(chat[1], size=16, weight=ft.FontWeight.BOLD),
+                                ft.Text(other_user_name, size=16, weight=ft.FontWeight.BOLD),
                                 ft.Text(f"آخر رسالة: {chat[2]}", size=12, color=ft.Colors.GREY_600),
                             ], spacing=5, expand=True),
                             ft.Icon(ft.Icons.CHEVRON_RIGHT, color=ft.Colors.GREY_400),
@@ -98,7 +105,6 @@ class ChatSystem:
                 )
             )
         
-        self.page.clean()
         self.page.title = "المحادثات"
         self.page.bgcolor = ft.Colors.GREY_50
         self.page.appbar = ft.AppBar(
@@ -168,7 +174,7 @@ class ChatSystem:
             center_title=False,
             bgcolor=ft.Colors.BLUE_700,
             color=ft.Colors.WHITE,
-            leading=ft.IconButton(ft.Icons.ARROW_BACK, on_click=lambda e: self.show_chats()),
+            leading=ft.IconButton(ft.Icons.ARROW_BACK, on_click=lambda e: self.go_back()),
         )
         
         self.page.add(
@@ -282,35 +288,40 @@ class ChatSystem:
                 if not self.messages_list or not self.current_chat_user_id:
                     continue
                 
-                # جلب الرسائل الجديدة
-                messages = self.db.get_messages(
-                    self.current_user['id'],
-                    self.current_chat_user_id,
-                    self.current_project_id
-                )
-                
-                if len(messages) > last_message_count:
-                    # إضافة الرسائل الجديدة فقط
-                    new_messages = messages[last_message_count:]
-                    for msg in new_messages:
-                        # تجنب إضافة الرسالة التي أرسلها المستخدم الحالي (أضيفت بالفعل)
-                        if msg['sender_id'] != self.current_user['id']:
-                            self.page.run_task(self.add_message_to_list, msg)
-                    last_message_count = len(messages)
-                    self.page.update()
+                try:
+                    # جلب الرسائل الجديدة
+                    messages = self.db.get_messages(
+                        self.current_user['id'],
+                        self.current_chat_user_id,
+                        self.current_project_id
+                    )
+                    
+                    if len(messages) > last_message_count:
+                        # إضافة الرسائل الجديدة فقط
+                        new_messages = messages[last_message_count:]
+                        for msg in new_messages:
+                            # تجنب إضافة الرسالة التي أرسلها المستخدم الحالي (أضيفت بالفعل)
+                            if msg['sender_id'] != self.current_user['id']:
+                                self.page.run_task(self.add_message_to_list, msg)
+                        last_message_count = len(messages)
+                        self.page.update()
+                except Exception as e:
+                    print(f"Error updating messages: {e}")
+                    continue
         
         # تشغيل التحديث في خيط منفصل
-        thread = threading.Thread(target=update_messages, daemon=True)
-        thread.start()
+        self.update_thread = threading.Thread(target=update_messages, daemon=True)
+        self.update_thread.start()
     
     def stop_auto_update(self):
         """إيقاف التحديث التلقائي"""
         self.update_thread_running = False
+        if self.update_thread:
+            self.update_thread = None
     
     def go_back(self):
         """العودة إلى الشاشة السابقة"""
         self.stop_auto_update()
-        from main import FreelancingPlatform
         # إعادة توجيه حسب نوع المستخدم
         user = self.current_user
         if user['user_type'] == 'admin':
