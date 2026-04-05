@@ -1,5 +1,5 @@
 """
-chat_system.py - نظام المحادثات المباشرة
+chat_system.py - نظام المحادثات المباشرة مع تحسينات
 """
 
 import flet as ft
@@ -49,6 +49,8 @@ class ChatSystem:
         
         # تنظيف الصفحة
         self.page.clean()
+        self.page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+        self.page.vertical_alignment = ft.MainAxisAlignment.START
         
         if not chats:
             # عرض رسالة عند عدم وجود محادثات
@@ -58,6 +60,7 @@ class ChatSystem:
                         ft.AppBar(title=ft.Text("المحادثات"), bgcolor=ft.Colors.BLUE_700),
                         ft.Container(
                             expand=True,
+                            alignment=ft.alignment.center,
                             content=ft.Column(
                                 [
                                     ft.Icon(ft.Icons.CHAT, size=100, color=ft.Colors.GREY_400),
@@ -68,7 +71,6 @@ class ChatSystem:
                                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                                 spacing=20,
                             ),
-                            alignment=ft.alignment.center,
                         )
                     ],
                     expand=True,
@@ -119,6 +121,7 @@ class ChatSystem:
             ft.Container(
                 expand=True,
                 padding=20,
+                alignment=ft.alignment.top_center,
                 content=ft.Column(
                     [
                         ft.Text("المحادثات السابقة", size=24, weight=ft.FontWeight.BOLD),
@@ -126,6 +129,7 @@ class ChatSystem:
                         ft.Divider(),
                         ft.Column(chat_cards, scroll=ft.ScrollMode.AUTO, expand=True),
                     ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing=15,
                 )
             )
@@ -326,10 +330,10 @@ class ChatSystem:
         user = self.current_user
         if user['user_type'] == 'admin':
             from admin_dashboard import AdminDashboard
-            AdminDashboard(self.page, self.db, user).build()
+            AdminDashboard(self.page, self.db, user, None).build()
         elif user['user_type'] == 'client':
             from client_dashboard import ClientDashboard
-            ClientDashboard(self.page, self.db, user).build()
+            ClientDashboard(self.page, self.db, user, None).build()
         else:
             from freelancer_dashboard import FreelancerDashboard
-            FreelancerDashboard(self.page, self.db, user).build()
+            FreelancerDashboard(self.page, self.db, user, None).build()

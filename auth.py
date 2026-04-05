@@ -1,5 +1,5 @@
 """
-auth.py - نظام تسجيل الدخول والتسجيل
+auth.py - نظام تسجيل الدخول والتسجيل مع توسيط كامل
 """
 
 import flet as ft
@@ -19,17 +19,19 @@ class AuthScreen:
         self.page.clean()
         self.page.title = "منصة العمل الحر - تسجيل الدخول"
         self.page.bgcolor = ft.Colors.GREY_50
+        self.page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+        self.page.vertical_alignment = ft.MainAxisAlignment.CENTER
         
-        # حاوية المحتوى الرئيسية
+        # حاوية المحتوى الرئيسية مع توسيط كامل
         container = ft.Container(
             expand=True,
+            alignment=ft.alignment.center,
             content=ft.Row(
-                expand=True,
                 alignment=ft.MainAxisAlignment.CENTER,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
                     ft.Container(
-                        width=500,
+                        width=450,
                         padding=30,
                         bgcolor=ft.Colors.WHITE,
                         border_radius=20,
@@ -45,6 +47,7 @@ class AuthScreen:
         )
         
         self.page.add(container)
+        self.page.update()
     
     def get_login_tab(self):
         """إنشاء تبويب تسجيل الدخول"""
@@ -53,6 +56,7 @@ class AuthScreen:
             width=400,
             border_radius=10,
             prefix_icon=ft.Icons.PERSON,
+            text_align=ft.TextAlign.LEFT,
         )
         
         self.password_field = ft.TextField(
@@ -86,8 +90,8 @@ class AuthScreen:
             spacing=20,
             controls=[
                 ft.Icon(ft.Icons.WORK, size=80, color=ft.Colors.BLUE_700),
-                ft.Text("مرحباً بك في منصة العمل الحر", size=28, weight=ft.FontWeight.BOLD),
-                ft.Text("سجل الدخول للوصول إلى لوحة التحكم", size=14, color=ft.Colors.GREY_600),
+                ft.Text("مرحباً بك في منصة العمل الحر", size=28, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
+                ft.Text("سجل الدخول للوصول إلى لوحة التحكم", size=14, color=ft.Colors.GREY_600, text_align=ft.TextAlign.CENTER),
                 ft.Divider(height=30),
                 self.username_field,
                 self.password_field,
@@ -99,15 +103,18 @@ class AuthScreen:
     def show_register_tab(self, e):
         """عرض نموذج التسجيل"""
         self.page.clean()
+        self.page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+        self.page.vertical_alignment = ft.MainAxisAlignment.CENTER
+        
         container = ft.Container(
             expand=True,
+            alignment=ft.alignment.center,
             content=ft.Row(
-                expand=True,
                 alignment=ft.MainAxisAlignment.CENTER,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
                     ft.Container(
-                        width=500,
+                        width=450,
                         padding=30,
                         bgcolor=ft.Colors.WHITE,
                         border_radius=20,
@@ -122,6 +129,7 @@ class AuthScreen:
             )
         )
         self.page.add(container)
+        self.page.update()
     
     def get_register_form(self):
         """إنشاء نموذج التسجيل"""
@@ -191,8 +199,8 @@ class AuthScreen:
             spacing=20,
             controls=[
                 ft.Icon(ft.Icons.PERSON_ADD, size=80, color=ft.Colors.GREEN_700),
-                ft.Text("إنشاء حساب جديد", size=28, weight=ft.FontWeight.BOLD),
-                ft.Text("انضم إلى منصة العمل الحر", size=14, color=ft.Colors.GREY_600),
+                ft.Text("إنشاء حساب جديد", size=28, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
+                ft.Text("انضم إلى منصة العمل الحر", size=14, color=ft.Colors.GREY_600, text_align=ft.TextAlign.CENTER),
                 ft.Divider(height=30),
                 self.reg_username,
                 self.reg_email,
@@ -217,7 +225,7 @@ class AuthScreen:
         
         if user:
             self.show_snackbar(f"مرحباً {username}! تم تسجيل الدخول بنجاح", ft.Colors.GREEN)
-            self.on_login_success(user)
+            self.on_login_success(user, password)
         else:
             self.show_snackbar("اسم المستخدم أو كلمة المرور غير صحيحة", ft.Colors.RED)
     
@@ -258,6 +266,7 @@ class AuthScreen:
         self.page.snack_bar = ft.SnackBar(
             content=ft.Text(message),
             bgcolor=color,
+            action="OK",
         )
         self.page.snack_bar.open = True
         self.page.update()

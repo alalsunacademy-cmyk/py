@@ -1,5 +1,5 @@
 """
-freelancer_dashboard.py - لوحة تحكم المستقل (Freelancer)
+freelancer_dashboard.py - لوحة تحكم المستقل مع صفحة بروفايل
 """
 
 import flet as ft
@@ -8,10 +8,11 @@ from database import Database
 class FreelancerDashboard:
     """لوحة تحكم المستقل"""
     
-    def __init__(self, page: ft.Page, db: Database, user_data: dict):
+    def __init__(self, page: ft.Page, db: Database, user_data: dict, clear_session_callback):
         self.page = page
         self.db = db
         self.user = user_data
+        self.clear_session = clear_session_callback
         self.current_filter_category = None
         self.current_filter_location = None
     
@@ -20,6 +21,7 @@ class FreelancerDashboard:
         self.page.clean()
         self.page.title = f"منصة العمل الحر - مرحباً {self.user['username']}"
         self.page.bgcolor = ft.Colors.GREY_50
+        self.page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
         
         # شريط التطبيق العلوي
         self.page.appbar = ft.AppBar(
@@ -28,7 +30,7 @@ class FreelancerDashboard:
             bgcolor=ft.Colors.BLUE_700,
             color=ft.Colors.WHITE,
             actions=[
-                ft.IconButton(ft.Icons.REFRESH, on_click=lambda e: self.refresh_view()),
+                ft.IconButton(ft.Icons.REFRESH, on_click=lambda e: self.refresh_view(), tooltip="تحديث"),
                 ft.IconButton(ft.Icons.LOGOUT, on_click=self.logout, tooltip="تسجيل الخروج"),
             ]
         )
@@ -53,6 +55,11 @@ class FreelancerDashboard:
                     label="عروضي"
                 ),
                 ft.NavigationRailDestination(
+                    icon=ft.Icons.PERSON,
+                    selected_icon=ft.Icons.PERSON_OUTLINED,
+                    label="البروفايل"
+                ),
+                ft.NavigationRailDestination(
                     icon=ft.Icons.CHAT,
                     selected_icon=ft.Icons.CHAT_OUTLINED,
                     label="المحادثات"
@@ -65,7 +72,7 @@ class FreelancerDashboard:
         self.content_area = ft.Container(
             expand=True,
             padding=20,
-            content=ft.Column(scroll=ft.ScrollMode.AUTO)
+            content=ft.Column(scroll=ft.ScrollMode.AUTO, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
         )
         
         # تخطيط الصفحة
@@ -90,6 +97,8 @@ class FreelancerDashboard:
         elif index == 1:
             self.show_my_proposals()
         elif index == 2:
+            self.show_profile()
+        elif index == 3:
             self.show_chats()
     
     def refresh_view(self):
@@ -100,6 +109,8 @@ class FreelancerDashboard:
         elif index == 1:
             self.show_my_proposals()
         elif index == 2:
+            self.show_profile()
+        elif index == 3:
             self.show_chats()
     
     def load_projects(self):
@@ -114,6 +125,7 @@ class FreelancerDashboard:
             padding=10,
             bgcolor=ft.Colors.WHITE,
             border_radius=10,
+            margin=ft.margin.only(bottom=20),
             content=ft.Row([
                 ft.Text("🔍 فلترة:", size=16, weight=ft.FontWeight.BOLD),
                 ft.Dropdown(
@@ -142,7 +154,7 @@ class FreelancerDashboard:
                     on_change=self.filter_by_location,
                 ),
                 ft.IconButton(ft.Icons.CLEAR, on_click=self.clear_filters, tooltip="إلغاء الفلاتر"),
-            ], spacing=10)
+            ], spacing=10, alignment=ft.MainAxisAlignment.CENTER)
         )
         
         if not projects:
@@ -150,7 +162,10 @@ class FreelancerDashboard:
                 filter_row,
                 ft.Icon(ft.Icons.FOLDER_OPEN, size=100, color=ft.Colors.GREY_400),
                 ft.Text("لا توجد مشاريع متاحة حالياً", size=18, color=ft.Colors.GREY_600),
+                ft.Text("سيتم عرض المشاريع الجديدة هنا", size=14, color=ft.Colors.GREY_500),
+                ft.ElevatedButton("تحديث", on_click=lambda e: self.load_projects(), icon=ft.Icons.REFRESH),
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=20)
+            self.page.update()
             return
         
         self.content_area.content = ft.Column(
@@ -161,6 +176,7 @@ class FreelancerDashboard:
                 ft.Divider(),
             ] + [self._project_card(p) for p in projects]
         )
+        self.page.update()
     
     def filter_by_category(self, e):
         """فلترة حسب نوع العمل"""
@@ -195,7 +211,7 @@ class FreelancerDashboard:
                             content=ft.Text(f"{project['budget']} $", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN)
                         ),
                     ]),
-                    ft.Text(project['description'][:150] + "...", size=14, color=ft.Colors.GREY_700),
+                    ft.Text(project['description'][:150] + ("..." if len(project['description']) > 150 else ""), size=14, color=ft.Colors.GREY_700),
                     ft.Row([
                         ft.Icon(ft.Icons.PERSON, size=16, color=ft.Colors.GREY_600),
                         ft.Text(project['client_name'], size=12, color=ft.Colors.GREY_600),
@@ -294,6 +310,102 @@ class FreelancerDashboard:
         dialog.open = True
         self.page.update()
     
+    def show_profile(self):
+        """عرض صفحة البروفايل الشخصية"""
+        # جلب إحصائيات المستخدم
+        proposals_count = self.db.get_user_proposals_count(self.user['id'])
+        
+        # جلب العروض المقبولة
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) FROM proposals 
+                WHERE freelancer_id = ? AND status = 'accepted'
+            """, (self.user['id'],))
+            accepted_proposals = cursor.fetchone()[0]
+        
+        profile_content = ft.Column(
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=20,
+            controls=[
+                ft.Card(
+                    elevation=5,
+                    content=ft.Container(
+                        width=500,
+                        padding=30,
+                        content=ft.Column([
+                            ft.CircleAvatar(
+                                content=ft.Text(self.user['username'][0].upper(), size=40),
+                                bgcolor=ft.Colors.BLUE_200,
+                                radius=50,
+                            ),
+                            ft.Text(self.user['username'], size=28, weight=ft.FontWeight.BOLD),
+                            ft.Text(self.user['email'], size=16, color=ft.Colors.GREY_600),
+                            ft.Container(
+                                padding=ft.padding.symmetric(horizontal=15, vertical=5),
+                                bgcolor=ft.Colors.GREEN.with_opacity(0.2),
+                                border_radius=20,
+                                content=ft.Text("مستقل (Freelancer)", size=14, color=ft.Colors.GREEN)
+                            ),
+                            ft.Divider(height=20),
+                            ft.Row([
+                                self._profile_stat_card("إجمالي العروض", proposals_count, ft.Icons.PROPOSAL),
+                                self._profile_stat_card("العروض المقبولة", accepted_proposals, ft.Icons.CHECK_CIRCLE),
+                            ], alignment=ft.MainAxisAlignment.CENTER, spacing=20),
+                        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=15)
+                    )
+                ),
+                ft.Card(
+                    elevation=3,
+                    content=ft.Container(
+                        width=500,
+                        padding=20,
+                        content=ft.Column([
+                            ft.Text("📝 معلومات الحساب", size=20, weight=ft.FontWeight.BOLD),
+                            ft.ListTile(
+                                leading=ft.Icon(ft.Icons.PERSON),
+                                title=ft.Text("اسم المستخدم"),
+                                subtitle=ft.Text(self.user['username']),
+                            ),
+                            ft.ListTile(
+                                leading=ft.Icon(ft.Icons.EMAIL),
+                                title=ft.Text("البريد الإلكتروني"),
+                                subtitle=ft.Text(self.user['email']),
+                            ),
+                            ft.ListTile(
+                                leading=ft.Icon(ft.Icons.CALENDAR_TODAY),
+                                title=ft.Text("عضو منذ"),
+                                subtitle=ft.Text("تم إنشاء الحساب"),
+                            ),
+                        ], spacing=10)
+                    )
+                ),
+                ft.ElevatedButton(
+                    "تحديث الملف الشخصي",
+                    icon=ft.Icons.EDIT,
+                    on_click=lambda e: self.show_snackbar("سيتم إضافة هذه الميزة قريباً", ft.Colors.ORANGE),
+                    width=300,
+                )
+            ]
+        )
+        
+        self.content_area.content = profile_content
+        self.page.update()
+    
+    def _profile_stat_card(self, title, value, icon):
+        """بطاقة إحصائية في البروفايل"""
+        return ft.Container(
+            width=150,
+            padding=15,
+            bgcolor=ft.Colors.BLUE.with_opacity(0.1),
+            border_radius=15,
+            content=ft.Column([
+                ft.Icon(icon, size=30, color=ft.Colors.BLUE),
+                ft.Text(str(value), size=24, weight=ft.FontWeight.BOLD),
+                ft.Text(title, size=12, color=ft.Colors.GREY_700, text_align=ft.TextAlign.CENTER),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=5)
+        )
+    
     def show_my_proposals(self):
         """عرض عروضي المقدمة"""
         # جلب جميع العروض المقدمة من هذا المستخدم
@@ -313,8 +425,10 @@ class FreelancerDashboard:
             self.content_area.content = ft.Column([
                 ft.Icon(ft.Icons.PROPOSAL, size=100, color=ft.Colors.GREY_400),
                 ft.Text("لم تقدم أي عروض بعد", size=18, color=ft.Colors.GREY_600),
+                ft.Text("قم بتقديم عروض على المشاريع المتاحة", size=14, color=ft.Colors.GREY_500),
                 ft.ElevatedButton("🔍 استعراض المشاريع", on_click=lambda e: self.load_projects()),
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=20)
+            self.page.update()
             return
         
         proposal_cards = []
@@ -326,7 +440,7 @@ class FreelancerDashboard:
             }.get(prop[3], ft.Colors.GREY)
             
             status_text = {
-                'pending': 'قيد المراجعة',
+                'pending': '⏳ قيد المراجعة',
                 'accepted': '✅ مقبول',
                 'rejected': '❌ مرفوض'
             }.get(prop[3], prop[3])
@@ -366,6 +480,7 @@ class FreelancerDashboard:
                 ft.Divider(),
             ] + proposal_cards
         )
+        self.page.update()
     
     def show_chats(self):
         """عرض المحادثات"""
@@ -374,13 +489,6 @@ class FreelancerDashboard:
         chat_system = ChatSystem(self.page, self.db, self.user)
         chat_system.show_chats()
     
-    def show_chat_with_user(self, other_user_id, other_user_name, project_id=None):
-        """بدء محادثة مع مستخدم"""
-        from chat_system import ChatSystem
-        
-        chat_system = ChatSystem(self.page, self.db, self.user)
-        chat_system.show_chat(other_user_id, other_user_name, project_id)
-    
     def close_dialog(self, dialog):
         """إغلاق الحوار"""
         dialog.open = False
@@ -388,11 +496,12 @@ class FreelancerDashboard:
     
     def show_snackbar(self, message, color):
         """عرض إشعار"""
-        self.page.snack_bar = ft.SnackBar(content=ft.Text(message), bgcolor=color)
+        self.page.snack_bar = ft.SnackBar(content=ft.Text(message), bgcolor=color, action="OK")
         self.page.snack_bar.open = True
         self.page.update()
     
     def logout(self, e):
         """تسجيل الخروج"""
+        self.clear_session()
         from main import FreelancingPlatform
         FreelancingPlatform(self.page)

@@ -8,10 +8,11 @@ from database import Database
 class ClientDashboard:
     """لوحة تحكم صاحب العمل"""
     
-    def __init__(self, page: ft.Page, db: Database, user_data: dict):
+    def __init__(self, page: ft.Page, db: Database, user_data: dict, clear_session_callback):
         self.page = page
         self.db = db
         self.user = user_data
+        self.clear_session = clear_session_callback
         self.current_view = None
     
     def build(self):
@@ -19,7 +20,7 @@ class ClientDashboard:
         self.page.clean()
         self.page.title = f"منصة العمل الحر - مرحباً {self.user['username']}"
         self.page.bgcolor = ft.Colors.GREY_50
-        self.page.theme_mode = ft.ThemeMode.LIGHT
+        self.page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
         
         # شريط التطبيق العلوي
         self.page.appbar = ft.AppBar(
@@ -28,7 +29,7 @@ class ClientDashboard:
             bgcolor=ft.Colors.BLUE_700,
             color=ft.Colors.WHITE,
             actions=[
-                ft.IconButton(ft.Icons.REFRESH, on_click=lambda e: self.refresh_view()),
+                ft.IconButton(ft.Icons.REFRESH, on_click=lambda e: self.refresh_view(), tooltip="تحديث"),
                 ft.IconButton(ft.Icons.LOGOUT, on_click=self.logout, tooltip="تسجيل الخروج"),
             ]
         )
@@ -70,7 +71,7 @@ class ClientDashboard:
         self.content_area = ft.Container(
             expand=True,
             padding=20,
-            content=ft.Column(scroll=ft.ScrollMode.AUTO)
+            content=ft.Column(scroll=ft.ScrollMode.AUTO, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
         )
         
         # تخطيط الصفحة
@@ -113,19 +114,29 @@ class ClientDashboard:
     
     def load_dashboard(self):
         """تحميل لوحة التحكم الرئيسية"""
+        projects_count = self.db.get_user_projects_count(self.user['id'])
+        
         self.content_area.content = ft.Column(
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=20,
             controls=[
                 ft.Card(
                     elevation=3,
                     content=ft.Container(
+                        width=400,
                         padding=20,
                         content=ft.Column([
-                            ft.Text("📊 نظرة عامة", size=24, weight=ft.FontWeight.BOLD),
+                            ft.Text("📊 نظرة عامة", size=24, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
                             ft.Row([
-                                self._stat_card("المشاريع المنشورة", self.db.get_user_projects_count(self.user['id']), ft.Icons.PROJECT, ft.Colors.BLUE),
-                            ], spacing=20),
-                        ])
+                                self._stat_card("المشاريع المنشورة", projects_count, ft.Icons.PROJECT, ft.Colors.BLUE),
+                            ], alignment=ft.MainAxisAlignment.CENTER, spacing=20),
+                            ft.ElevatedButton(
+                                "➕ إنشاء مشروع جديد",
+                                on_click=lambda e: self.show_create_project(),
+                                icon=ft.Icons.ADD,
+                                width=250,
+                            )
+                        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=15)
                     )
                 ),
                 ft.Text("📋 أحدث المشاريع", size=20, weight=ft.FontWeight.BOLD),
@@ -134,21 +145,35 @@ class ClientDashboard:
         
         # عرض آخر 5 مشاريع
         projects = self.db.get_projects_by_client(self.user['id'])[:5]
-        for project in projects:
-            self.content_area.content.controls.append(self._project_card(project))
+        if projects:
+            for project in projects:
+                self.content_area.content.controls.append(self._project_card(project))
+        else:
+            self.content_area.content.controls.append(
+                ft.Container(
+                    padding=50,
+                    content=ft.Column([
+                        ft.Icon(ft.Icons.FOLDER_OPEN, size=80, color=ft.Colors.GREY_400),
+                        ft.Text("لا توجد مشاريع بعد", size=16, color=ft.Colors.GREY_600),
+                        ft.Text("انقر على 'إنشاء مشروع جديد' للبدء", size=14, color=ft.Colors.GREY_500),
+                    ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10)
+                )
+            )
+        
+        self.page.update()
     
     def _stat_card(self, title, value, icon, color):
         """بطاقة إحصائية"""
         return ft.Container(
-            expand=True,
+            width=200,
             padding=20,
             bgcolor=color.with_opacity(0.1),
             border_radius=15,
             content=ft.Column([
                 ft.Icon(icon, size=40, color=color),
                 ft.Text(str(value), size=32, weight=ft.FontWeight.BOLD),
-                ft.Text(title, size=14, color=ft.Colors.GREY_700),
-            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+                ft.Text(title, size=14, color=ft.Colors.GREY_700, text_align=ft.TextAlign.CENTER),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10)
         )
     
     def _project_card(self, project):
@@ -174,7 +199,7 @@ class ClientDashboard:
                             content=ft.Text(status_text, size=12, color=status_color)
                         ),
                     ]),
-                    ft.Text(project['description'][:100] + "...", size=14, color=ft.Colors.GREY_700),
+                    ft.Text(project['description'][:100] + ("..." if len(project['description']) > 100 else ""), size=14, color=ft.Colors.GREY_700),
                     ft.Row([
                         ft.Icon(ft.Icons.CATEGORY, size=16, color=ft.Colors.GREY_600),
                         ft.Text(project['category'], size=12, color=ft.Colors.GREY_600),
@@ -259,9 +284,10 @@ class ClientDashboard:
                     ft.ElevatedButton("إلغاء", on_click=lambda e: self.load_dashboard()),
                     ft.ElevatedButton("نشر المشروع", on_click=create_project, 
                                     style=ft.ButtonStyle(bgcolor=ft.Colors.GREEN, color=ft.Colors.WHITE)),
-                ], spacing=10)
+                ], spacing=10, alignment=ft.MainAxisAlignment.CENTER)
             ]
         )
+        self.page.update()
     
     def show_my_projects(self):
         """عرض مشاريعي"""
@@ -271,8 +297,10 @@ class ClientDashboard:
             self.content_area.content = ft.Column([
                 ft.Icon(ft.Icons.FOLDER_OPEN, size=100, color=ft.Colors.GREY_400),
                 ft.Text("لم تقم بنشر أي مشاريع بعد", size=18, color=ft.Colors.GREY_600),
+                ft.Text("انقر على 'مشروع جديد' لبدء نشر مشروعك الأول", size=14, color=ft.Colors.GREY_500),
                 ft.ElevatedButton("➕ إنشاء مشروع", on_click=lambda e: self.show_create_project()),
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=20)
+            self.page.update()
             return
         
         self.content_area.content = ft.Column(
@@ -280,8 +308,10 @@ class ClientDashboard:
             controls=[
                 ft.Text("📋 مشاريعي", size=28, weight=ft.FontWeight.BOLD),
                 ft.Text(f"إجمالي المشاريع: {len(projects)}", size=14, color=ft.Colors.GREY_600),
+                ft.Divider(),
             ] + [self._project_card(p) for p in projects]
         )
+        self.page.update()
     
     def show_proposals(self, project_id):
         """عرض العروض المقدمة لمشروع"""
@@ -293,8 +323,10 @@ class ClientDashboard:
                 ft.Text(f"📋 عروض مشروع: {project['title']}", size=24, weight=ft.FontWeight.BOLD),
                 ft.Icon(ft.Icons.PROPOSAL, size=100, color=ft.Colors.GREY_400),
                 ft.Text("لا توجد عروض لهذا المشروع بعد", size=16, color=ft.Colors.GREY_600),
+                ft.Text("سيتم إشعارك عند تقديم أي عروض", size=14, color=ft.Colors.GREY_500),
                 ft.ElevatedButton("العودة", on_click=lambda e: self.show_my_projects()),
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=20)
+            self.page.update()
             return
         
         proposal_cards = []
@@ -352,7 +384,7 @@ class ClientDashboard:
                                 ft.Text(f"{proposal['price']} $", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN),
                                 ft.Text(f"تاريخ التقديم: {proposal['created_at']}", size=12, color=ft.Colors.GREY_500),
                             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                            ft.Row(action_buttons, spacing=10) if action_buttons else ft.Container(),
+                            ft.Row(action_buttons, spacing=10, alignment=ft.MainAxisAlignment.CENTER) if action_buttons else ft.Container(),
                         ])
                     )
                 )
@@ -368,6 +400,7 @@ class ClientDashboard:
                 ft.Divider(),
             ] + proposal_cards
         )
+        self.page.update()
     
     def show_chats(self):
         """عرض المحادثات"""
@@ -376,20 +409,14 @@ class ClientDashboard:
         chat_system = ChatSystem(self.page, self.db, self.user)
         chat_system.show_chats()
     
-    def show_chat_with_user(self, other_user_id, other_user_name, project_id=None):
-        """بدء محادثة مع مستخدم"""
-        from chat_system import ChatSystem
-        
-        chat_system = ChatSystem(self.page, self.db, self.user)
-        chat_system.show_chat(other_user_id, other_user_name, project_id)
-    
     def show_snackbar(self, message, color):
         """عرض إشعار"""
-        self.page.snack_bar = ft.SnackBar(content=ft.Text(message), bgcolor=color)
+        self.page.snack_bar = ft.SnackBar(content=ft.Text(message), bgcolor=color, action="OK")
         self.page.snack_bar.open = True
         self.page.update()
     
     def logout(self, e):
         """تسجيل الخروج"""
+        self.clear_session()
         from main import FreelancingPlatform
         FreelancingPlatform(self.page)

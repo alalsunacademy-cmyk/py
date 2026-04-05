@@ -201,136 +201,134 @@ class AdminDashboard:
                     ft.DataCell(ft.Row([
                         ft.IconButton(ft.Icons.BLOCK, on_click=toggle_status, 
                                     tooltip="حظر/تنشيط", icon_color=ft.Colors.ORANGE),
-                        ft.IconButton(ft.Icons.DELETE, on_click=lambda e, u_id=user['id'], uname=user['username']: delete_user(u_id, uname),
+                        ft.IconButton(ft.Icons.DELETE, on_click=lambda e, u_id=user['id']: delete_user(u_id, user['username']),
                                     tooltip="حذف", icon_color=ft.Colors.RED),
-                    ], spacing=0)),
-                ])
-            )
-        
-        users_table = ft.DataTable(
-            columns=[
-                ft.DataColumn(ft.Text("ID")),
-                ft.DataColumn(ft.Text("اسم المستخدم")),
-                ft.DataColumn(ft.Text("البريد الإلكتروني")),
-                ft.DataColumn(ft.Text("نوع المستخدم")),
-                ft.DataColumn(ft.Text("الحالة")),
-                ft.DataColumn(ft.Text("الإجراءات")),
-            ],
-            rows=user_rows,
-            width=900,
+                                    ], spacing=0)),
+            ])
         )
-        
-        self.content_area.content = ft.Column(
-            spacing=20,
-            controls=[
-                ft.Text("👥 إدارة المستخدمين", size=28, weight=ft.FontWeight.BOLD),
-                ft.Text(f"إجمالي المستخدمين: {len(users)}", size=14, color=ft.Colors.GREY_600),
-                ft.Divider(),
-                ft.Container(
-                    content=users_table,
-                    scroll=ft.ScrollMode.AUTO,
-                    height=500,
-                ),
-            ]
-        )
-        self.page.update()
     
-    def manage_projects(self):
-        """إدارة المشاريع"""
-        projects = self.db.get_all_projects_admin()
+    users_table = ft.DataTable(
+        columns=[
+            ft.DataColumn(ft.Text("ID")),
+            ft.DataColumn(ft.Text("اسم المستخدم")),
+            ft.DataColumn(ft.Text("البريد الإلكتروني")),
+            ft.DataColumn(ft.Text("نوع المستخدم")),
+            ft.DataColumn(ft.Text("الحالة")),
+            ft.DataColumn(ft.Text("الإجراءات")),
+        ],
+        rows=user_rows,
+        width=900,
+    )
+    
+    self.content_area.content = ft.Column(
+        spacing=20,
+        controls=[
+            ft.Text("👥 إدارة المستخدمين", size=28, weight=ft.FontWeight.BOLD),
+            ft.Text(f"إجمالي المستخدمين: {len(users)}", size=14, color=ft.Colors.GREY_600),
+            ft.Divider(),
+            ft.Container(
+                content=users_table,
+                scroll=ft.ScrollMode.AUTO,
+                height=500,
+            ),
+        ]
+    )
+
+def manage_projects(self):
+    """إدارة المشاريع"""
+    projects = self.db.get_all_projects_admin()
+    
+    # إنشاء جدول المشاريع
+    project_rows = []
+    for project in projects:
+        status_color = ft.Colors.GREEN if project['status'] == 'open' else ft.Colors.ORANGE
+        status_text = "مفتوح" if project['status'] == 'open' else "مغلق"
+        location_text = "عن بعد" if project['location'] == "Remote" else "في الموقع"
         
-        # إنشاء جدول المشاريع
-        project_rows = []
-        for project in projects:
-            status_color = ft.Colors.GREEN if project['status'] == 'open' else ft.Colors.ORANGE
-            status_text = "مفتوح" if project['status'] == 'open' else "مغلق"
-            location_text = "عن بعد" if project['location'] == "Remote" else "في الموقع"
-            
-            def delete_project(p_id=project['id'], title=project['title']):
-                def confirm_delete(e):
-                    self.db.delete_project(p_id)
-                    self.show_snackbar(f"تم حذف المشروع {title}", ft.Colors.RED)
-                    self.manage_projects()
-                    dialog.open = False
-                
-                dialog = ft.AlertDialog(
-                    title=ft.Text("تأكيد الحذف"),
-                    content=ft.Text(f"هل أنت متأكد من حذف المشروع {title}؟"),
-                    actions=[
-                        ft.TextButton("إلغاء", on_click=lambda e: setattr(dialog, 'open', False)),
-                        ft.ElevatedButton("حذف", on_click=confirm_delete, style=ft.ButtonStyle(bgcolor=ft.Colors.RED)),
-                    ],
-                )
-                self.page.dialog = dialog
-                dialog.open = True
-                self.page.update()
-            
-            def edit_project(p_id=project['id'], current_status=project['status']):
-                new_status = 'closed' if current_status == 'open' else 'open'
-                self.db.update_project(p_id, status=new_status)
-                self.show_snackbar(f"تم {'إغلاق' if new_status == 'closed' else 'فتح'} المشروع", ft.Colors.GREEN)
+        def delete_project(p_id=project['id'], title=project['title']):
+            def confirm_delete(e):
+                self.db.delete_project(p_id)
+                self.show_snackbar(f"تم حذف المشروع {title}", ft.Colors.RED)
                 self.manage_projects()
+                dialog.open = False
             
-            project_rows.append(
-                ft.DataRow(cells=[
-                    ft.DataCell(ft.Text(str(project['id']))),
-                    ft.DataCell(ft.Text(project['title'][:30] + ("..." if len(project['title']) > 30 else ""))),
-                    ft.DataCell(ft.Text(project['client_name'])),
-                    ft.DataCell(ft.Text(project['category'])),
-                    ft.DataCell(ft.Text(location_text)),
-                    ft.DataCell(ft.Text(f"{project['budget']} $")),
-                    ft.DataCell(ft.Container(
-                        padding=ft.padding.symmetric(horizontal=8, vertical=4),
-                        bgcolor=status_color.with_opacity(0.2),
-                        border_radius=20,
-                        content=ft.Text(status_text, size=12, color=status_color)
-                    )),
-                    ft.DataCell(ft.Row([
-                        ft.IconButton(ft.Icons.EDIT, on_click=lambda e, p_id=project['id'], s=project['status']: edit_project(p_id, s),
-                                    tooltip="تغيير الحالة", icon_color=ft.Colors.BLUE),
-                        ft.IconButton(ft.Icons.DELETE, on_click=lambda e, p_id=project['id'], title=project['title']: delete_project(p_id, title),
-                                    tooltip="حذف", icon_color=ft.Colors.RED),
-                    ], spacing=0)),
-                ])
+            dialog = ft.AlertDialog(
+                title=ft.Text("تأكيد الحذف"),
+                content=ft.Text(f"هل أنت متأكد من حذف المشروع {title}؟"),
+                actions=[
+                    ft.TextButton("إلغاء", on_click=lambda e: setattr(dialog, 'open', False)),
+                    ft.ElevatedButton("حذف", on_click=confirm_delete, style=ft.ButtonStyle(bgcolor=ft.Colors.RED)),
+                ],
             )
+            self.page.dialog = dialog
+            dialog.open = True
+            self.page.update()
         
-        projects_table = ft.DataTable(
-            columns=[
-                ft.DataColumn(ft.Text("ID")),
-                ft.DataColumn(ft.Text("العنوان")),
-                ft.DataColumn(ft.Text("صاحب العمل")),
-                ft.DataColumn(ft.Text("النوع")),
-                ft.DataColumn(ft.Text("الموقع")),
-                ft.DataColumn(ft.Text("الميزانية")),
-                ft.DataColumn(ft.Text("الحالة")),
-                ft.DataColumn(ft.Text("الإجراءات")),
-            ],
-            rows=project_rows,
-            width=1100,
-        )
+        def edit_project(p_id=project['id'], current_status=project['status']):
+            new_status = 'closed' if current_status == 'open' else 'open'
+            self.db.update_project(p_id, status=new_status)
+            self.show_snackbar(f"تم {'إغلاق' if new_status == 'closed' else 'فتح'} المشروع", ft.Colors.GREEN)
+            self.manage_projects()
         
-        self.content_area.content = ft.Column(
-            spacing=20,
-            controls=[
-                ft.Text("📋 إدارة المشاريع", size=28, weight=ft.FontWeight.BOLD),
-                ft.Text(f"إجمالي المشاريع: {len(projects)}", size=14, color=ft.Colors.GREY_600),
-                ft.Divider(),
-                ft.Container(
-                    content=projects_table,
-                    scroll=ft.ScrollMode.AUTO,
-                    height=500,
-                ),
-            ]
+        project_rows.append(
+            ft.DataRow(cells=[
+                ft.DataCell(ft.Text(str(project['id']))),
+                ft.DataCell(ft.Text(project['title'][:30] + ("..." if len(project['title']) > 30 else ""))),
+                ft.DataCell(ft.Text(project['client_name'])),
+                ft.DataCell(ft.Text(project['category'])),
+                ft.DataCell(ft.Text(location_text)),
+                ft.DataCell(ft.Text(f"{project['budget']} $")),
+                ft.DataCell(ft.Container(
+                    padding=ft.padding.symmetric(horizontal=8, vertical=4),
+                    bgcolor=status_color.with_opacity(0.2),
+                    border_radius=20,
+                    content=ft.Text(status_text, size=12, color=status_color)
+                )),
+                ft.DataCell(ft.Row([
+                    ft.IconButton(ft.Icons.EDIT, on_click=lambda e, p_id=project['id'], s=project['status']: edit_project(p_id, s),
+                                tooltip="تغيير الحالة", icon_color=ft.Colors.BLUE),
+                    ft.IconButton(ft.Icons.DELETE, on_click=lambda e, p_id=project['id']: delete_project(p_id, project['title']),
+                                tooltip="حذف", icon_color=ft.Colors.RED),
+                ], spacing=0)),
+            ])
         )
-        self.page.update()
     
-    def show_snackbar(self, message, color):
-        """عرض إشعار"""
-        self.page.snack_bar = ft.SnackBar(content=ft.Text(message), bgcolor=color)
-        self.page.snack_bar.open = True
-        self.page.update()
+    projects_table = ft.DataTable(
+        columns=[
+            ft.DataColumn(ft.Text("ID")),
+            ft.DataColumn(ft.Text("العنوان")),
+            ft.DataColumn(ft.Text("صاحب العمل")),
+            ft.DataColumn(ft.Text("النوع")),
+            ft.DataColumn(ft.Text("الموقع")),
+            ft.DataColumn(ft.Text("الميزانية")),
+            ft.DataColumn(ft.Text("الحالة")),
+            ft.DataColumn(ft.Text("الإجراءات")),
+        ],
+        rows=project_rows,
+        width=1100,
+    )
     
-    def logout(self, e):
-        """تسجيل الخروج"""
-        from main import FreelancingPlatform
-        FreelancingPlatform(self.page)
+    self.content_area.content = ft.Column(
+        spacing=20,
+        controls=[
+            ft.Text("📋 إدارة المشاريع", size=28, weight=ft.FontWeight.BOLD),
+            ft.Text(f"إجمالي المشاريع: {len(projects)}", size=14, color=ft.Colors.GREY_600),
+            ft.Divider(),
+            ft.Container(
+                content=projects_table,
+                scroll=ft.ScrollMode.AUTO,
+                height=500,
+            ),
+        ]
+    )
+
+def show_snackbar(self, message, color):
+    """عرض إشعار"""
+    self.page.snack_bar = ft.SnackBar(content=ft.Text(message), bgcolor=color)
+    self.page.snack_bar.open = True
+    self.page.update()
+
+def logout(self, e):
+    """تسجيل الخروج"""
+    from main import FreelancingPlatform
+    FreelancingPlatform(self.page)
