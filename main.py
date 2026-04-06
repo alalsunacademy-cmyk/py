@@ -1,5 +1,5 @@
 """
-main.py - الملف الرئيسي لتطبيق منصة العمل الحر مع حفظ الجلسة
+main.py - الملف الرئيسي لتطبيق منصة العمل الحر
 """
 
 import flet as ft
@@ -24,16 +24,16 @@ class FreelancingPlatform:
         """إعدادات الصفحة الرئيسية"""
         self.page.title = "منصة العمل الحر"
         self.page.theme_mode = ft.ThemeMode.LIGHT
-        self.page.window_width = 1200
+        self.page.window_width = 400
         self.page.window_height = 800
-        self.page.window_min_width = 800
-        self.page.window_min_height = 600
-        self.page.padding = 20
-        self.page.spacing = 10
+        self.page.window_max_width = 500
+        self.page.padding = 0
+        self.page.spacing = 0
+        self.page.scroll = ft.ScrollMode.AUTO
         
         # إعدادات للأجهزة المحمولة
         self.page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-        self.page.vertical_alignment = ft.MainAxisAlignment.CENTER
+        self.page.vertical_alignment = ft.MainAxisAlignment.START
         
         # تعيين لون الخلفية
         self.page.bgcolor = ft.Colors.GREY_50

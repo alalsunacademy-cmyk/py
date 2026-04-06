@@ -1,5 +1,5 @@
 """
-auth.py - نظام تسجيل الدخول والتسجيل مع توسيط كامل
+auth.py - نظام تسجيل الدخول والتسجيل مع تصميم محمول
 """
 
 import flet as ft
@@ -13,204 +13,176 @@ class AuthScreen:
         self.db = db
         self.on_login_success = on_login_success
         self.user_type = "freelancer"
+        self.is_login = True  # True: login, False: register
     
     def build(self):
         """بناء واجهة المصادقة"""
         self.page.clean()
-        self.page.title = "منصة العمل الحر - تسجيل الدخول"
+        self.page.title = "منصة العمل الحر"
         self.page.bgcolor = ft.Colors.GREY_50
-        self.page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-        self.page.vertical_alignment = ft.MainAxisAlignment.CENTER
+        self.page.scroll = ft.ScrollMode.AUTO
         
-        # حاوية المحتوى الرئيسية مع توسيط كامل
-        container = ft.Container(
+        # حاوية قابلة للتمرير
+        main_container = ft.Container(
             expand=True,
-            alignment=ft.alignment.center,
-            content=ft.Row(
-                alignment=ft.MainAxisAlignment.CENTER,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                controls=[
-                    ft.Container(
-                        width=450,
-                        padding=30,
-                        bgcolor=ft.Colors.WHITE,
-                        border_radius=20,
-                        shadow=ft.BoxShadow(
-                            spread_radius=1,
-                            blur_radius=15,
-                            color=ft.Colors.BLACK12,
-                        ),
-                        content=self.get_login_tab()
-                    )
-                ]
+            padding=ft.padding.symmetric(horizontal=20, vertical=30),
+            content=ft.Column(
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=20,
+                scroll=ft.ScrollMode.AUTO,
+                controls=self.get_login_ui() if self.is_login else self.get_register_ui()
             )
         )
         
-        self.page.add(container)
+        self.page.add(main_container)
         self.page.update()
     
-    def get_login_tab(self):
-        """إنشاء تبويب تسجيل الدخول"""
+    def get_login_ui(self):
+        """واجهة تسجيل الدخول"""
         self.username_field = ft.TextField(
             label="اسم المستخدم",
-            width=400,
-            border_radius=10,
+            width=self.page.window_width - 60,
+            border_radius=15,
             prefix_icon=ft.Icons.PERSON,
-            text_align=ft.TextAlign.LEFT,
+            bgcolor=ft.Colors.WHITE,
         )
         
         self.password_field = ft.TextField(
             label="كلمة المرور",
-            width=400,
+            width=self.page.window_width - 60,
             password=True,
             can_reveal_password=True,
-            border_radius=10,
+            border_radius=15,
             prefix_icon=ft.Icons.LOCK,
+            bgcolor=ft.Colors.WHITE,
         )
         
         login_button = ft.ElevatedButton(
             content=ft.Text("تسجيل الدخول", size=18, weight=ft.FontWeight.BOLD),
-            width=400,
+            width=self.page.window_width - 60,
             height=50,
             style=ft.ButtonStyle(
                 color=ft.Colors.WHITE,
                 bgcolor=ft.Colors.BLUE_700,
-                shape=ft.RoundedRectangleBorder(radius=10),
+                shape=ft.RoundedRectangleBorder(radius=15),
             ),
             on_click=self.handle_login
         )
         
-        register_link = ft.TextButton(
-            content=ft.Text("ليس لديك حساب؟ سجل الآن", size=14, color=ft.Colors.BLUE_600),
-            on_click=self.show_register_tab
+        register_button = ft.OutlinedButton(
+            content=ft.Text("إنشاء حساب جديد", size=16),
+            width=self.page.window_width - 60,
+            height=45,
+            style=ft.ButtonStyle(
+                shape=ft.RoundedRectangleBorder(radius=15),
+            ),
+            on_click=lambda e: self.toggle_mode()
         )
         
-        return ft.Column(
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=20,
-            controls=[
-                ft.Icon(ft.Icons.WORK, size=80, color=ft.Colors.BLUE_700),
-                ft.Text("مرحباً بك في منصة العمل الحر", size=28, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
-                ft.Text("سجل الدخول للوصول إلى لوحة التحكم", size=14, color=ft.Colors.GREY_600, text_align=ft.TextAlign.CENTER),
-                ft.Divider(height=30),
-                self.username_field,
-                self.password_field,
-                login_button,
-                register_link,
-            ]
-        )
+        return [
+            ft.Container(height=40),
+            ft.Icon(ft.Icons.WORK, size=80, color=ft.Colors.BLUE_700),
+            ft.Text("مرحباً بك", size=28, weight=ft.FontWeight.BOLD),
+            ft.Text("في منصة العمل الحر", size=16, color=ft.Colors.GREY_600),
+            ft.Container(height=20),
+            self.username_field,
+            self.password_field,
+            login_button,
+            ft.Text("أو", size=14, color=ft.Colors.GREY_500),
+            register_button,
+        ]
     
-    def show_register_tab(self, e):
-        """عرض نموذج التسجيل"""
-        self.page.clean()
-        self.page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-        self.page.vertical_alignment = ft.MainAxisAlignment.CENTER
-        
-        container = ft.Container(
-            expand=True,
-            alignment=ft.alignment.center,
-            content=ft.Row(
-                alignment=ft.MainAxisAlignment.CENTER,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                controls=[
-                    ft.Container(
-                        width=450,
-                        padding=30,
-                        bgcolor=ft.Colors.WHITE,
-                        border_radius=20,
-                        shadow=ft.BoxShadow(
-                            spread_radius=1,
-                            blur_radius=15,
-                            color=ft.Colors.BLACK12,
-                        ),
-                        content=self.get_register_form()
-                    )
-                ]
-            )
-        )
-        self.page.add(container)
-        self.page.update()
-    
-    def get_register_form(self):
-        """إنشاء نموذج التسجيل"""
+    def get_register_ui(self):
+        """واجهة التسجيل"""
         self.reg_username = ft.TextField(
             label="اسم المستخدم",
-            width=400,
-            border_radius=10,
+            width=self.page.window_width - 60,
+            border_radius=15,
             prefix_icon=ft.Icons.PERSON,
+            bgcolor=ft.Colors.WHITE,
         )
         
         self.reg_email = ft.TextField(
             label="البريد الإلكتروني",
-            width=400,
-            border_radius=10,
+            width=self.page.window_width - 60,
+            border_radius=15,
             prefix_icon=ft.Icons.EMAIL,
+            bgcolor=ft.Colors.WHITE,
         )
         
         self.reg_password = ft.TextField(
             label="كلمة المرور",
-            width=400,
+            width=self.page.window_width - 60,
             password=True,
             can_reveal_password=True,
-            border_radius=10,
+            border_radius=15,
             prefix_icon=ft.Icons.LOCK,
+            bgcolor=ft.Colors.WHITE,
         )
         
         self.reg_confirm_password = ft.TextField(
             label="تأكيد كلمة المرور",
-            width=400,
+            width=self.page.window_width - 60,
             password=True,
             can_reveal_password=True,
-            border_radius=10,
+            border_radius=15,
             prefix_icon=ft.Icons.LOCK,
+            bgcolor=ft.Colors.WHITE,
         )
         
-        # خيارات نوع الحساب
         self.user_type_dropdown = ft.Dropdown(
             label="نوع الحساب",
-            width=400,
+            width=self.page.window_width - 60,
             options=[
                 ft.dropdown.Option("freelancer", "مستقل (Freelancer)"),
                 ft.dropdown.Option("client", "صاحب عمل (Client)"),
             ],
             value="freelancer",
-            border_radius=10,
+            border_radius=15,
+            bgcolor=ft.Colors.WHITE,
         )
         
         register_button = ft.ElevatedButton(
             content=ft.Text("إنشاء حساب", size=18, weight=ft.FontWeight.BOLD),
-            width=400,
+            width=self.page.window_width - 60,
             height=50,
             style=ft.ButtonStyle(
                 color=ft.Colors.WHITE,
                 bgcolor=ft.Colors.GREEN_700,
-                shape=ft.RoundedRectangleBorder(radius=10),
+                shape=ft.RoundedRectangleBorder(radius=15),
             ),
             on_click=self.handle_register
         )
         
-        login_link = ft.TextButton(
-            content=ft.Text("لديك حساب بالفعل؟ تسجيل الدخول", size=14, color=ft.Colors.BLUE_600),
-            on_click=lambda e: self.build()
+        login_button = ft.OutlinedButton(
+            content=ft.Text("لديك حساب؟ تسجيل الدخول", size=16),
+            width=self.page.window_width - 60,
+            height=45,
+            style=ft.ButtonStyle(
+                shape=ft.RoundedRectangleBorder(radius=15),
+            ),
+            on_click=lambda e: self.toggle_mode()
         )
         
-        return ft.Column(
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=20,
-            controls=[
-                ft.Icon(ft.Icons.PERSON_ADD, size=80, color=ft.Colors.GREEN_700),
-                ft.Text("إنشاء حساب جديد", size=28, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
-                ft.Text("انضم إلى منصة العمل الحر", size=14, color=ft.Colors.GREY_600, text_align=ft.TextAlign.CENTER),
-                ft.Divider(height=30),
-                self.reg_username,
-                self.reg_email,
-                self.reg_password,
-                self.reg_confirm_password,
-                self.user_type_dropdown,
-                register_button,
-                login_link,
-            ]
-        )
+        return [
+            ft.Container(height=20),
+            ft.Icon(ft.Icons.PERSON_ADD, size=80, color=ft.Colors.GREEN_700),
+            ft.Text("إنشاء حساب جديد", size=28, weight=ft.FontWeight.BOLD),
+            ft.Text("انضم إلى منصة العمل الحر", size=16, color=ft.Colors.GREY_600),
+            ft.Container(height=20),
+            self.reg_username,
+            self.reg_email,
+            self.reg_password,
+            self.reg_confirm_password,
+            self.user_type_dropdown,
+            register_button,
+            login_button,
+        ]
+    
+    def toggle_mode(self):
+        """التبديل بين وضعي تسجيل الدخول والتسجيل"""
+        self.is_login = not self.is_login
+        self.build()
     
     def handle_login(self, e):
         """معالجة طلب تسجيل الدخول"""
@@ -257,7 +229,8 @@ class AuthScreen:
         # محاولة التسجيل
         if self.db.register_user(username, email, password, user_type):
             self.show_snackbar("تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن", ft.Colors.GREEN)
-            self.build()  # العودة إلى شاشة تسجيل الدخول
+            self.is_login = True
+            self.build()
         else:
             self.show_snackbar("اسم المستخدم أو البريد الإلكتروني موجود مسبقاً", ft.Colors.RED)
     
@@ -267,6 +240,7 @@ class AuthScreen:
             content=ft.Text(message),
             bgcolor=color,
             action="OK",
+            duration=3000,
         )
         self.page.snack_bar.open = True
         self.page.update()
